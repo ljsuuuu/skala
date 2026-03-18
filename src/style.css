@@ -1,0 +1,31 @@
+:root {
+  font-family: 'Noto Sans KR', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  
+  /* 다크모드 대응을 위한 기본 변수 (필요시 확장) */
+  color-scheme: light;
+  color: #213547;
+  background-color: #f1f3f5; /* 전체 배경색 (회색톤) */
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-y: scroll; /* 스크롤바 공간 확보로 좌우 밀림 방지 */
+}
+
+/* #app의 기본 스타일을 완전히 초기화하여 레이아웃 제어권을 App.vue로 넘김 */
+#app {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
