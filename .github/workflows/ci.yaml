@@ -1,6 +1,5 @@
 name: CI Pipeline for Vue App
 
-# 메인 브랜치에 푸시(또는 PR)될 때 자동으로 실행
 on:
   push:
     branches: ["main"]
@@ -8,10 +7,8 @@ on:
     branches: ["main"]
 
 env:
-  # Harbor 설정 (Secret 사용)
   REGISTRY: ${{ secrets.HARBOR_URL }}
-  # 프로젝트 및 이미지 이름 정의 정보
-  IMAGE_PATH: skala26a-ai1/a3021_vue # 형식: <프로젝트명>/<이미지이름>
+  IMAGE_PATH: skala26a-ai1/a3021_vue
 
 jobs:
   build-and-push:
@@ -19,19 +16,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 소스 코드 가져오기
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Docker Buildx 설정 (멀티 플랫폼 빌드 등 고급 기능 활성화)
+      # ARM64 빌드를 위한 에뮬레이터 설정 (필수)
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 3. Harbor 레지스트리 로그인
-      # - Step 2에서 설정한 Secrets를 사용합니다.
       - name: Login to Harbor
         uses: docker/login-action@v3
         with:
@@ -39,23 +35,21 @@ jobs:
           username: ${{ secrets.HARBOR_USERNAME }}
           password: ${{ secrets.HARBOR_PASSWORD }}
 
-      # 4. 이미지 빌드 및 Harbor 푸시
-      # - 태그 전략: 'latest'와 고유한 커밋 SHA 값 두 가지를 모두 생성하여 푸시합니다.
       - name: Build and Push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64
+          # 오직 Apple Silicon용(linux/arm64)만 빌드합니다.
+          platforms: linux/arm64
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${{ github.sha }}
-          # 빠른 빌드를 위한 캐시 설정 (GitHub Actions 전용 캐시 사용)
+          # 캐시 설정을 유지하여 다음 빌드 속도를 더욱 높입니다.
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 5. 빌드 결과 확인을 위한 요약 (선택 사항)
       - name: Build Summary
         run: |
-          echo "✔ CI Process Completed."
+          echo "✔ ARM64 CI Process Completed."
           echo "✔ Image pushed to: ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}"
