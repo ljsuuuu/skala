@@ -11,7 +11,7 @@ env:
   # Harbor 설정 (Secret 사용)
   REGISTRY: ${{ secrets.HARBOR_URL }}
   # 프로젝트 및 이미지 이름 정의 정보
-  IMAGE_PATH: skala26a-ai1/A3021_Vue # 형식: <프로젝트명>/<이미지이름>
+  IMAGE_PATH: skala26a-ai1/a3021_vue # 형식: <프로젝트명>/<이미지이름>
 
 jobs:
   build-and-push:
