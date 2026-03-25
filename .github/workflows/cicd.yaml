@@ -1,0 +1,73 @@
+name: CI/CD Pipeline for Vue App
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  REGISTRY: ${{ secrets.HARBOR_URL }}
+  IMAGE_PATH: skala26a-ai1/a3021_vue
+
+jobs:
+  build-and-deploy:
+    name: Build, Push & Deploy to K8s
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ==========================================
+      # CD (Continuous Deployment) 파트 시작
+      # ==========================================
+
+      - name: Set up Kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: "latest"
+
+      - name: Configure Kubernetes Credentials
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Update Deployment YAML and Apply
+        run: |
+          # 1. k8s/deployment.yaml 파일 내의 'image: ...' 부분을 새로 빌드한 고유 태그 주소로 교체
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${{ github.sha }}|g" k8s/deployment.yaml
+
+          # 2. K8s 폴더의 파일을 사용하여 쿠버네티스 클러스터에 배포
+          kubectl apply -f k8s/deployment.yaml
+
+          # 3. 파드가 정상적으로 Running 상태가 될 때까지 롤아웃을 대기
+          kubectl rollout status deployment/sk3021 -n skala3-ai1
+
+      - name: Pipeline Summary
+        run: |
+          echo "✔ CI/CD Process Completed."
+          echo "✔ Image pushed and deployed via k8s/deployment.yaml: ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${{ github.sha }}"

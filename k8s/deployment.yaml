@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sk3021
+  namespace: skala3-ai1
+  labels:
+    app: sk3021-vue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sk3021
+  template:
+    metadata:
+      labels:
+        app: sk3021
+    spec:
+      imagePullSecrets:
+        - name: harbor-secret
+      containers:
+        - name: vue-container
+          image: amdp-registry.skala-ai.com/skala26a-ai1/a3021_vue:latest
+          ports:
+            - containerPort: 80
