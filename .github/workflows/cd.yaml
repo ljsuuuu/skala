@@ -1,0 +1,64 @@
+name: CD Pipeline for Vue App
+
+# CI 파이프라인이 완료되었을 때 실행되도록 연결
+on:
+  workflow_run:
+    workflows: ["CI Pipeline for Vue App"]
+    types:
+      - completed
+
+env:
+  REGISTRY: ${{ secrets.HARBOR_URL }}
+  IMAGE_PATH: skala26a-ai1/a3021_vue
+
+jobs:
+  deploy-to-k8s:
+    name: Deploy to K8s
+    runs-on: ubuntu-latest
+    # CI 파이프라인이 '성공(success)' 했을 때만 배포 진행
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      # CI에서 빌드했던 것과 동일한 특정 시점의 코드를 가져옵니다.
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Set up Kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: "latest"
+
+      - name: Configure Kubernetes Credentials
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Update Deployment YAML and Apply
+        run: |
+          # CD는 트리거된 이벤트이므로 기본 github.sha가 다릅니다. CI에서 만든 이미지 태그를 정확히 찾아옵니다.
+          COMMIT_SHA=${{ github.event.workflow_run.head_sha }}
+
+          # k8s/deployment.yaml 파일 내의 'image: ...' 부분을 CI에서 빌드한 고유 태그 주소로 교체
+          sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${COMMIT_SHA}|g" k8s/deployment.yaml
+
+          # K8s 폴더의 파일을 사용하여 쿠버네티스 클러스터에 배포
+          kubectl apply -f k8s/deployment.yaml
+
+          # 파드가 정상적으로 Running 상태가 될 때까지 롤아웃을 대기
+          kubectl rollout status deployment/sk3021 -n skala3-ai1
+
+      - name: CD Summary
+        run: |
+          COMMIT_SHA=${{ github.event.workflow_run.head_sha }}
+          echo "✔ CD Process Completed."
+          echo "✔ Image deployed via k8s/deployment.yaml: ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${COMMIT_SHA}"
