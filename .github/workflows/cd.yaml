@@ -10,16 +10,17 @@ on:
 env:
   REGISTRY: ${{ secrets.HARBOR_URL }}
   IMAGE_PATH: skala26a-ai1/a3021_vue
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   deploy-to-k8s:
     name: Deploy to K8s
     runs-on: ubuntu-latest
-    # CI 파이프라인이 '성공(success)' 했을 때만 배포 진행
+    # CI 파이프라인이 성공 했을 때만 배포 진행
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      # CI에서 빌드했던 것과 동일한 특정 시점의 코드를 가져옵니다.
+      # CI에서 빌드했던 것과 동일한 특정 시점의 코드를 가져옴
       - name: Checkout code
         uses: actions/checkout@v4
         with:
