@@ -45,6 +45,14 @@ jobs:
       # CD (Continuous Deployment) 파트 시작
       # ==========================================
 
+      # [추가됨] 쿠버네티스(EKS) 접속을 위한 AWS 인증 처리
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
       - name: Set up Kubectl
         uses: azure/setup-kubectl@v3
         with:
@@ -58,13 +66,13 @@ jobs:
 
       - name: Update Deployment YAML and Apply
         run: |
-          # 1. k8s/deployment.yaml 파일 내의 'image: ...' 부분을 새로 빌드한 고유 태그 주소로 교체
+          # k8s/deployment.yaml 파일 내의 'image: ...' 부분을 새로 빌드한 고유 태그 주소로 교체
           sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${{ github.sha }}|g" k8s/deployment.yaml
 
-          # 2. K8s 폴더의 파일을 사용하여 쿠버네티스 클러스터에 배포
+          # K8s 폴더의 파일을 사용하여 쿠버네티스 클러스터에 배포
           kubectl apply -f k8s/deployment.yaml
 
-          # 3. 파드가 정상적으로 Running 상태가 될 때까지 롤아웃을 대기
+          # 파드가 정상적으로 Running 상태가 될 때까지 롤아웃을 대기
           kubectl rollout status deployment/sk3021 -n skala3-ai1
 
       - name: Pipeline Summary
